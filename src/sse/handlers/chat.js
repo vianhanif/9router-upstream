@@ -333,6 +333,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       toolRankEnabled: !!chatSettings.toolRankEnabled,
       customPromptEnabled: !!chatSettings.customPromptEnabled,
       customPrompt: chatSettings.customPrompt || "",
+      reaAllowEnabled: !!chatSettings.reaAllowEnabled,
       pxpipeEnabled: !!chatSettings.pxpipeEnabled,
       pxpipeMinChars: chatSettings.pxpipeMinChars,
       pxpipeTimeoutMs: chatSettings.pxpipeTimeoutMs,
