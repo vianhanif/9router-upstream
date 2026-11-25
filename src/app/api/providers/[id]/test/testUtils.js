@@ -3,6 +3,7 @@ import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { testProxyUrl } from "@/lib/network/proxyTest";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
+import { getByteplusChatUrl, getByteplusModel } from "open-sse/config/byteplus.js";
 import { ANTIGRAVITY_IDE_USER_AGENT } from "open-sse/providers/shared.js";
 import { probeBedrockCredentials } from "open-sse/executors/bedrock.js";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
@@ -738,13 +739,30 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
       }
       case "volcengine-ark":
       case "byteplus": {
-        const res = await fetchWithConnectionProxy(PROVIDERS[connection.provider]?.baseUrl, {
+        // byteplus: coding-plan vs standard surface is per connection, and the model
+        // is connection-scoped too. Other providers keep the registry base URL.
+        const url = connection.provider === "byteplus"
+          ? getByteplusChatUrl(connection.providerSpecificData)
+          : PROVIDERS[connection.provider]?.baseUrl;
+        const model = connection.provider === "byteplus"
+          ? getByteplusModel(connection.providerSpecificData, getDefaultModel(connection.provider))
+          : getDefaultModel(connection.provider);
+        const res = await fetchWithConnectionProxy(url, {
           method: "POST",
           headers: { "Authorization": `Bearer ${connection.apiKey}`, "content-type": "application/json" },
-          body: JSON.stringify({ model: getDefaultModel(connection.provider), max_tokens: 1, messages: [{ role: "user", content: "test" }] }),
+          body: JSON.stringify({ model, max_tokens: 1, messages: [{ role: "user", content: "test" }] }),
         }, effectiveProxy);
-        const valid = res.status !== 401 && res.status !== 403;
-        return { valid, error: valid ? null : "Invalid API key" };
+        if (connection.provider !== "byteplus") {
+          const valid = res.status !== 401 && res.status !== 403;
+          return { valid, error: valid ? null : "Invalid API key" };
+        }
+        // byteplus: only 401 means the key itself is bad. 403/400/404 are plan/model
+        // errors (AccessDenied, InvalidSubscription, ModelNotOpen) — surface the text.
+        if (res.ok) return { valid: true, error: null };
+        if (res.status === 401) return { valid: false, error: "Invalid API key", status: 401 };
+        const bodyText = await res.text().catch(() => "");
+        const message = parseProviderErrorMessage(bodyText, `API returned ${res.status}`);
+        return { valid: true, warning: `${res.status} ${message}`, status: res.status };
       }
       case "deepseek": {
         const res = await fetchWithConnectionProxy("https://api.deepseek.com/models", { headers: { Authorization: `Bearer ${connection.apiKey}` } }, effectiveProxy);
@@ -1045,5 +1063,5 @@ export async function testSingleConnection(id) {
 
   await updateProviderConnection(id, updateData);
 
-  return { valid: result.valid, error: result.error, refreshed: !!result.refreshed, latencyMs, testedAt: new Date().toISOString() };
+  return { valid: result.valid, error: result.error, warning: result.warning || null, refreshed: !!result.refreshed, latencyMs, testedAt: new Date().toISOString() };
 }

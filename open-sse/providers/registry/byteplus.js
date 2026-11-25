@@ -1,3 +1,5 @@
+import { BYTEPLUS_DEFAULT_MODEL, BYTEPLUS_ENDPOINTS } from "../../config/byteplus.js";
+
 export default {
   id: "byteplus",
   priority: 70,
@@ -19,11 +21,11 @@ export default {
   },
   category: "freeTier",
   transport: {
-    baseUrl: "https://ark.ap-southeast.bytepluses.com/api/coding/v3/chat/completions",
+    baseUrl: `${BYTEPLUS_ENDPOINTS.coding}/chat/completions`,
     headers: {},
   },
   models: [
-    { id: "seed-2-0-pro-260328", name: "Seed 2.0 Pro" },
+    { id: BYTEPLUS_DEFAULT_MODEL, name: "Seed 2.0 Pro" },
     { id: "seed-2-0-code-preview-260328", name: "Seed 2.0 Code Preview" },
     { id: "seed-2-0-mini-260215", name: "Seed 2.0 Mini" },
     { id: "seed-2-0-lite-260228", name: "Seed 2.0 Lite" },
