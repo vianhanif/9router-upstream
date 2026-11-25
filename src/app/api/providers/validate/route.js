@@ -403,9 +403,13 @@ export async function POST(request) {
               }),
             }
           );
-          // Only 401 means the key is bad; 403/400/404 are plan/model errors
-          // (AccessDenied, InvalidSubscription, ModelNotOpen) — keep the key valid
-          // and surface the upstream text.
+          if (!isByteplus) {
+            isValid = res.status !== 401 && res.status !== 403;
+            break;
+          }
+          // byteplus: only 401 means the key is bad; 403/400/404 are plan/model
+          // errors (AccessDenied, InvalidSubscription, ModelNotOpen) — keep the
+          // key valid and surface the upstream text.
           isValid = res.status !== 401;
           if (!isValid) {
             error = "Invalid API key";

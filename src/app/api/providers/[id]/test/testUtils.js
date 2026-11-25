@@ -752,8 +752,12 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
           headers: { "Authorization": `Bearer ${connection.apiKey}`, "content-type": "application/json" },
           body: JSON.stringify({ model, max_tokens: 1, messages: [{ role: "user", content: "test" }] }),
         }, effectiveProxy);
-        // Only 401 means the key itself is bad. 403/400/404 are plan/model errors
-        // (AccessDenied, InvalidSubscription, ModelNotOpen) — surface the upstream text.
+        if (connection.provider !== "byteplus") {
+          const valid = res.status !== 401 && res.status !== 403;
+          return { valid, error: valid ? null : "Invalid API key" };
+        }
+        // byteplus: only 401 means the key itself is bad. 403/400/404 are plan/model
+        // errors (AccessDenied, InvalidSubscription, ModelNotOpen) — surface the text.
         if (res.ok) return { valid: true, error: null };
         if (res.status === 401) return { valid: false, error: "Invalid API key", status: 401 };
         const bodyText = await res.text().catch(() => "");
